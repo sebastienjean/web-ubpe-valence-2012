@@ -1,0 +1,333 @@
+
+<form action="#">
+	<fieldset>
+		<legend>Données à afficher</legend>
+		<div id="chart_choice"></div>
+	</fieldset>
+	<fieldset>
+		<legend>Filtrer par machine(s)</legend>
+		<div id="stations_choice"></div>
+	</fieldset>
+</form>
+
+<div id="chart_container">
+	<h2 id="chart_title"></h2>
+	<div style="float: right">
+		<label style="cursor:pointer;"><input type="checkbox" id="stop_refresh" /> Ne pas rafraichir automatiquement</label>
+	</div>
+	<div id="chart_type">
+		Afficher : 
+		<label><input type="radio" name="chart_type" value="line" /> Courbe</label>
+		<label><input type="radio" name="chart_type" value="scatter" checked="checked" /> Points</label>
+	</div>
+	<div id="chart"></div>
+</div>
+<script type="text/javascript">
+	var properties = {
+			'altGPS': { 
+				label: 'Altitude',
+				charts: {
+					'altGPS':     { label: 'Altitude (m)',   color: 'red' }
+				}
+			},
+			'numSatsGPS': { 
+				label: 'Nombre de satellites',
+				charts: {
+					'numSatsGPS': { label: 'Nb. satellites', color: 'yellow' }
+				}
+			},
+			'speedGPS': { 
+				label: 'Vitesse',
+				charts: {
+					'speedGPS':   { label: 'Vitesse (km/h)', color: 'gray' }
+				}
+			},
+			'cap': { 
+				label: 'Cap',// & boussole',
+				charts: {
+					'capGPS':     { label: 'Cap (°)',        color: '#00BFF' },
+					//'boussole':   { label: 'Boussole (°)',   color: '#4000FF' }
+				}
+			},
+			'temp': {
+				label: 'Températures',
+				charts: {
+					'tempIn':     { label: 'T° intérieure',  color: '#01DFA5' },
+					'tempOut':    { label: 'T° extérieure',  color: '#BFFF00' }
+				}
+			},
+			'pressure': {
+				label: 'Pression',
+				charts: { 
+					'pressure':   { label: 'Pression',       color: '#08088A' }
+				}
+			},
+			'hygro': {
+				label: 'Hygrométrie',
+				charts: { 
+					'hygro':      { label: 'Hygrométrie',    color: '#2E64FE' }
+				}
+			},
+			'lux': {
+				label: 'Luminosité',
+				chartLabel: 'Luminosité (lux)',
+				charts: {
+					'lux1':       { label: 'Capteur 1',      color: '#F5A9A9' },
+					'lux2':       { label: 'Capteur 2',      color: '#F15858' },
+					'lux3':       { label: 'Capteur 3',      color: '#FF0000' },
+					'lux4':       { label: 'Capteur 4',      color: '#B40404' },
+					'luxAverage': { label: 'Moyenne',        color: '#B40404' }
+				}
+			},
+			'voltage': {
+				label: 'Alimentation',
+				charts: {
+					'voltage':    { label: 'Alimentation',   color: '#FFFF00' }
+				}
+			}
+		},
+		$title = $('#chart_title'),
+		$container = $('#chart_container'),
+		chart = null,
+		seriesList = {},
+		currentProperty = null,
+		chartType = 'scatter',
+		stopRefresh = false;
+	
+	function buildChoices(selector) {
+		var $elm = $(selector);
+		
+		$.each(properties, function(property, options) {
+			var $e = $('<button type="button" />'),
+				id = 'prop_'+property;
+			
+			$e.attr('id', id);
+			$e.click(function() {
+				currentProperty = property;
+				
+				$elm.find('button').removeAttr('disabled');
+				$(this).attr('disabled', 'disabled');
+				
+				buildChart();
+				return false;
+			});
+			$e.text(options.label);
+			$e.css('cursor', 'pointer');
+
+			$elm.append($e);
+		});
+	}
+	
+	function buildStationsChoices() {
+		var $elm = $('#stations_choice');
+		var old = [];
+		$elm.find('input[type=checkbox]').each(function() {
+			old.push($(this).val());
+		});
+		
+		$.each(UBPE.stations, function(i, station) {
+			if(-1 != $.inArray(station, old)) {
+				return;
+			}
+			
+			var $input = $('<input type="checkbox" />'),
+				$label = $('<label />'),
+				$wrapper = $('<span />'),
+				id = 'station_'+station;
+			
+			$label.attr('for', id);
+			$label.text(station);
+			$input.val(station);
+			$input.attr('id', id);
+			$input.click(function() {
+				buildChart();
+			});
+			$input.add($label).css('cursor', 'pointer');
+
+			$elm.append($wrapper);
+			$wrapper.append($input);
+			$input.after($label);
+		});
+	}
+	
+	function getSelectedStations() {
+		var arr = [];
+		
+		$('#stations_choice input[type=checkbox]:checked').each(function() {
+			arr.push( $(this).val() );
+		});
+		
+		return arr;
+	}
+	
+	$(document).ready(function() {
+		buildChoices('#chart_choice');
+		
+		$('#chart_type input[type=radio]').click(function() {
+			chartType = $(this).val();
+			
+			buildChart();
+		});
+		
+		$('#stop_refresh').click(function() {
+			if( $(this).is(':checked') ) {
+				stopRefresh = true;
+			}
+			else {
+				stopRefresh = false;
+				refreshChart();
+			}
+		});
+		
+		loadData();
+	});
+	
+	// -------------------------------------
+	
+	function isSimple(property) {
+		if(typeof(properties[property]) == 'undefined') {
+			alert('Série inconnue ('+property+')');
+		}
+		
+		if(typeof(properties[property].charts) == 'undefined') {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	function buildSeries(property, st) {
+		var index = buildSeriesIndex(property, st);
+		seriesList[index] = [];
+		
+		if(isSimple(property)) {
+			alert('simple');
+			for (key in UBPE.data) {
+				if(st.length == 0 || -1 != jQuery.inArray(UBPE.data[key].stationName, st)) {
+					var x = 'Mesuré le ' + UBPE.data[key].dateGPSFormat + ' à ' + UBPE.data[key].timeGPSFormat;
+					var y = UBPE.data[key][property];
+					seriesList[index].push([ x, y ]);
+				}
+			}
+			
+			seriesList[index] = [{
+				name: properties[property].label,
+				data: seriesList[index] 
+			}];
+			
+			return seriesList[index];
+		}
+		else {
+			for (prop in properties[property].charts) {
+				var d = [];
+			
+				for (key in UBPE.data) {
+					if(st.length == 0 || -1 != jQuery.inArray(UBPE.data[key].stationName, st)) {
+						//var x = 'Mesuré le ' + UBPE.data[key].dateGPSFormat + ' à ' + UBPE.data[key].timeGPSFormat;
+						var x = UBPE.data[key].dateRelay;
+						var y = UBPE.data[key][prop];
+						d.push([ x, y ]);
+					}
+				}
+				
+				seriesList[index].push({
+					name: properties[property].charts[prop].label,
+					data: d
+				});
+			}
+			
+			return seriesList[index];
+		}
+	}
+	
+	function loadData() {
+		var newData = updateData();
+
+		buildStationsChoices();
+	}
+	
+	function buildSeriesIndex(property, st) {
+		return property + st.join('-');
+	}
+		
+	function refreshChart() {
+		if(stopRefresh) {
+			return;
+		}
+	
+		loadData();
+		
+		buildChart();
+	}
+	
+	function buildChart() {
+		if(null == currentProperty) {
+			return;
+		}
+		
+		UBPE.clearTimer('refreshChart');
+	
+		var property = currentProperty;
+		
+		$title.text('');
+		chart = null;
+		
+		if(UBPE.data.length == 0) {
+			loadData();
+		}
+	
+		if (UBPE.data === false)
+			errorAccessFile();
+		else {
+			var st = getSelectedStations();
+			//var series = seriesList[buildSeriesIndex(property, st)] || buildSeries(property, st);
+			var series = buildSeries(property, st);
+			
+			if(series.length > 0) {
+				$title.text( properties[property].label );
+				
+				chart = new Highcharts.Chart({
+					chart: {
+						renderTo: 'chart',
+						type: chartType,
+						borderWidth: 2
+					},
+					title: {
+						text: properties[property].label
+					},
+					series: series,
+					credits: { 
+						text: 'IUT de Valence - http://ubpe.iut-valence.fr' 
+					},
+					yAxis: {
+						title: {
+							text: properties[property].chartLabel || properties[property].label
+						}
+					},
+					xAxis: {
+						title: {
+							text: 'Temps (survolez les points pour afficher la date exacte)'
+						},
+						type: 'datetime',
+						dateTimeLabelFormat: {
+							month: '%e %b',
+							year: '%b'
+						}
+					},
+					tooltip: {
+						formatter: function() {
+							return '<b>'+ this.series.name +'</b><br/>'+
+							Highcharts.dateFormat('%e %b à %H:%M:%S', this.x) +': '+ this.y;
+						}
+					},
+				});
+				
+				//document.location.href = '#chart';
+			}
+		}
+		
+		UBPE.timer('refreshChart', refreshChart);
+		//timer = setTimeout(refreshChart, UBPE.timeout); // On rafraichit toutes les 10 secondes
+	}
+
+</script>

@@ -1,0 +1,185 @@
+<form action="#">
+	<fieldset>
+		<legend>Filtrer par machine(s)</legend>
+		<div id="stations_choice"></div>
+	</fieldset>
+</form>
+<table class="dataTable">
+	<thead>
+		<tr>
+			<th>Date de réception</th>
+			<th>Station</th>
+			<th>Objet</th>
+			<th>Date (GPS)</th>
+			<th>Latitude</th>
+			<th>Longitude</th>
+			<th>Altitude</th>
+			<th>Fix GPS (V/A)</th>
+			<th>Nb. sat.</th>
+			<th>Vitesse</th>
+			<th>Cap</th>
+			<th>Reset</th>
+			<th>FrameId</th>
+			<th>Phase de vol</th>
+			<th>T° (int.)</th>
+			<th>T° (ext.)</th>
+			<th>Pression</th>
+			<!--<th>Boussole</th>-->
+			<th>Hygro.</th>
+			<th>Lum. (capt. 1)</th>
+			<th>Lum. (capt. 2)</th>
+			<th>Lum. (capt. 3)</th>
+			<th>Lum. (capt. 4)</th>
+			<th>Alim</th>
+			<th>Date loc.</th>
+			<th>Requêtes</th>
+		</tr>
+	</thead>
+	<tbody>
+	</tbody>
+</table>
+<script type="text/javascript">
+
+	var oTable = null;
+
+	$(document).ready(function() {
+		
+		oTable = $('.dataTable').dataTable({
+			'fnRowCallback': function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
+				$(nRow).addClass('new-datatables-line');
+			},
+			'aaSorting': [ [0,'desc'] ],
+			'aoColumnDefs': [{
+				'fnRender': function (o, v) {
+					var date = new Date(v);
+					return '<span title="'+date.toString('dd/MM/yyyy HH:mm:ss')+'">'+date.toString('HH:mm:ss')+'</span>';
+				},
+				'aTargets': [0]
+			}]
+		});
+		
+		//updateTable(true);
+		rebuildTable();
+		
+	});
+	
+	function buildStationsChoices() {
+		var $elm = $('#stations_choice');
+		var old = [];
+		$elm.find('input[type=checkbox]').each(function() {
+			old.push($(this).val());
+		});
+		
+		$.each(UBPE.stations, function(i, station) {
+			if(-1 != $.inArray(station, old)) {
+				return;
+			}
+			
+			var $input = $('<input type="checkbox" />'),
+				$label = $('<label />'),
+				$wrapper = $('<span />'),
+				id = 'station_'+station;
+			
+			$label.attr('for', id);
+			$label.text(station);
+			$input.val(station);
+			$input.attr('id', id);
+			$input.click(function() {
+				rebuildTable();
+			});
+			$input.add($label).css('cursor', 'pointer');
+
+			$elm.append($wrapper);
+			$wrapper.append($input);
+			$input.after($label);
+		});
+	}
+	
+	function getSelectedStations() {
+		var arr = [];
+		
+		$('#stations_choice input[type=checkbox]:checked').each(function() {
+			arr.push( $(this).val() );
+		});
+		
+		return arr;
+	}
+
+	function changeOpacityNewLines () {
+		$('.new-datatables-line').removeClass('new-datatables-line', '2000');
+	}
+
+	function rebuildTable() {
+		UBPE.clearTimer(['changeOpacity', 'updateTable']);
+		
+		oTable.fnClearTable();
+		
+		updateTable(true);
+	}
+	
+	function updateTable (allData) {
+		var allData = (typeof(allData) != 'undefined' && allData === true);
+		var newData = updateData().filtered; // filtered | raw
+		var selectedStations = getSelectedStations();
+		
+		if(allData) {
+			newData = UBPE.data;
+		}
+		
+		buildStationsChoices();
+		
+		if (newData === false)
+			errorAccessFile();
+		else
+		{
+			for (key in newData)
+			{
+				if(selectedStations.length == 0 || -1 != jQuery.inArray(newData[key].stationName, selectedStations)) {
+					var img = function(prop) {
+						var src = guessCapImgUrl(newData[key][prop]);
+						
+						if(!src) {
+							return '?';
+						}
+						
+						return '<img src="'+src+'" height="40" align="center middle" alt="'+newData[key][prop]+'" title="'+newData[key][prop]+'" />';
+					};
+					
+					var nl = [
+						newData[key].dateRelay,
+						newData[key].stationName,
+						newData[key].objectName,
+						newData[key].dateGPSFormat + ' ' + newData[key].timeGPSFormat,
+						newData[key].latGPSFormat,
+						newData[key].longGPSFormat,
+						newData[key].altGPS,
+						newData[key].fixGPS,   
+						newData[key].numSatsGPS,
+						newData[key].speedGPS,
+						img('capGPS'),
+						newData[key].reset,
+						newData[key].frameid,
+						newData[key].flightloop,
+						newData[key].tempIn,
+						newData[key].tempOut,
+						newData[key].pressure,
+						//img('boussole'),
+						newData[key].hygro,
+						newData[key].lux1,
+						newData[key].lux2,
+						newData[key].lux3,
+						newData[key].lux4,
+						newData[key].voltage,
+						newData[key].dateLoc,
+						newData[key].requests
+					];
+					oTable.fnAddData(nl);
+				}
+			}
+			
+			UBPE.timer('changeOpacity', changeOpacityNewLines, 3000);
+			UBPE.timer('updateTable', updateTable);
+		}
+	}
+
+</script>

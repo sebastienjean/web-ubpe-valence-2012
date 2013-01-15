@@ -1,0 +1,123 @@
+* {
+	margin: 0px;
+	padding: 0px;
+	font-family: "Helvetica Neue", Helvetica, Arial;
+	color: #111;
+}
+
+html, body, nav, #global, #container {
+	height: 100%;
+	width: 100%;
+}
+
+body {
+	background: #2B3744;
+}
+
+header {
+	background: url("../img/bg.jpg");
+	-webkit-background-size: 100% 300px;
+	-o-background-size: 100% 300px;
+	background-size: 100% 300px;
+	height: 300px;
+	margin: 0 auto;
+	border-bottom: 1px solid #07090A;
+}
+
+nav {
+	/*width: 220px;
+	float: left;*/
+	overflow-y: auto;
+	overflow-x: hidden;
+	/*position: fixed;*/
+	border-right: 1px solid #07090A;
+	border-left: 1px solid #07090A;
+}
+
+/*nav ul  li{
+	float: left;
+	height: 40px;
+	background: url('img/menu.png') repeat-x left center;
+}*/
+
+#main {
+	margin-left: 221px;
+	overflow: auto;
+}
+
+#content h2 {
+	margin: 0px 0px 20px 30px;
+}
+
+#content {
+	background: white;
+	margin: 50px 50px 50px 70px;
+	padding: 20px;
+	-webkit-border-radius: 10px;
+	-moz-border-radius: 10px;
+	border-radius: 10px;
+	text-align: justify;
+	font-size: 15px;
+	line-height: 22px;
+	-webkit-box-shadow: 0px 0px 40px 10px rgba(0, 0, 0, 0.5);
+	-moz-box-shadow: 0px 0px 40px 10px rgba(0, 0, 0, 0.5);
+	box-shadow: 0px 0px 40px 10px rgba(0, 0, 0, 0.5);
+	overflow: auto;
+}
+
+nav ul {
+	width: 220px;
+	list-style-type: none;
+}
+
+nav ul li {
+	width: 220px;
+	border-bottom: 1px solid #07090A;
+	background: url("../img/menu.png") repeat-x;
+	float: left;
+	height: 40px;
+}
+
+nav ul li a {
+	width: 210px;
+	cursor: pointer;
+	padding: 6px 0px 13px 10px;
+	display: block;
+	text-decoration: none;
+	
+	color: #DDD;
+	height: 18px;
+	line-height: 18px;
+	display: block;
+	/*font-size: 16px;*/
+	font-weight: bold;
+	text-shadow: 0px 0px 10px #777;
+	filter: dropshadow(color=#777, offx=0, offy=0);
+}
+
+.label {
+	background-color: #999999;
+	border-radius: 3px 3px 3px 3px;
+	color: #FFFFFF;
+	font-size: 11.05px;
+	font-weight: bold;
+	padding: 2px 4px 3px;
+	text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.label-true {
+	background-color: #468847;
+}
+
+.label-false {
+	background-color: #B94A48;
+}
+
+table.dataTable tr.new-datatables-line,
+table.dataTable tr.new-datatables-line *,
+table.dataTable tr.new-datatables-line td.sorting_1,
+table.dataTable tr.new-datatables-line td.sorting_1,
+table.dataTable tr.new-datatables-line td.sorting_2,
+table.dataTable tr.new-datatables-line td.sorting_3 {
+	background-color: #E7C1C0;
+}

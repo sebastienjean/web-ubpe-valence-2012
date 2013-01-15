@@ -1,0 +1,65 @@
+
+<select id="stationsList">
+</select>
+<div class="map"></div>
+<script type="text/javascript">
+$(document).ready(function() {
+
+	updateData(true);
+
+	function updateStations() {
+		$('#stationsList').empty();
+		$('#stationsList').append($('<option value="">Choisir une station</option>'));
+		
+		for (var i = 0; i < UBPE.stations.length; i++) {
+			var newoption = new Option(UBPE.stations[i], UBPE.stations[i]);
+			$('#stationsList').append(newoption);
+		}
+	}
+	
+	updateStations();
+	
+	function updateMap (station, allData) {
+		var allData = (typeof(allData) != 'undefined' && allData === true);
+		var data = updateData().raw;
+		
+		//if(allData) {
+			data = UBPE.data;
+		//}
+		
+		var stationData = [];
+		
+		for (key in data)
+		{
+			if (data[key].stationName == station) {
+				stationData.push(data[key]);
+			}
+		}
+
+		if(stationData.length == 0) {
+			return;
+		}
+		
+		$('.map').traceMap({
+			height: '500',
+			width: '800',
+			zoom: 14,
+			opacity: 0.4,
+			init: [stationData[0].latGPSFormat, stationData[0].longGPSFormat],
+			path: stationData
+		});
+	}
+
+	$('.map').initMap({
+		height: '500',
+		width: '800',
+		zoom: 14
+	});
+
+	$('#stationsList').change(function () {
+		updateMap($('#stationsList option:selected').val(), true);
+	});
+	
+	updateStations();
+});
+</script>
